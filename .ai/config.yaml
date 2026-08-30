@@ -1,0 +1,15 @@
+# tai handoff config
+#
+# ここは default 値であり Source of Truth ではない。
+# Autonomy Policy の Source of Truth は Architect Thread の指示で、
+# Architect は Thread Tree の枝ごとにこれを上書きしてよい（spec §14）。
+
+# 現場監督（Code クラウドセッション）の ID。通知の宛先。
+# 雛形では空欄。現場監督は世代交代するため、ここに実セッション ID を
+# コミットしない（現存しないセッションを指し続ける負債になる）。
+# 運用では環境変数 SUPERVISOR_SESSION で渡す。環境変数はこの値より優先される。
+supervisor_session:
+
+# Preset 名。定義は .claude/skills/tai/references/protocol.md §5
+#   MANUAL | TASK_BOUNDARY | GIT_BOUNDARY | AUTONOMOUS_UNTIL_ARBITRATION
+default_autonomy: TASK_BOUNDARY
