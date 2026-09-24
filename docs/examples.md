@@ -6,8 +6,10 @@
 ## A. 人間が運ぶ最小構成
 
 ```text
-人間の依頼 -> ArchitectがTask文書を発行・保存
-             -> 人間がTaskをWorkerへ渡す
+人間の依頼 -> Architectが全文起草・内容確定・発行指示
+             -> 人間が完成済み本文をSupervisorへ渡す
+             -> Supervisorがファイル化・保存・発行正本固定・搬入
+             -> 承認済みの起動経路でWorkerへ渡す
              -> Workerが成果物とReportを保存
              -> Supervisorが証拠を確認
              -> 人間がReportをArchitectへ渡す
@@ -20,9 +22,9 @@
 ## B. 異なるエンジンを混ぜる
 
 ```text
-Issue -> 認証・権限・重複検査 -> Task T-001 r1を文書ストアへ
-      -> Architect（エンジンA）
-      -> Supervisor（検証プログラム）
+Issue -> 認証・権限・重複検査
+      -> Architect（エンジンA）がTask T-001 r1を起草・確定
+      -> Supervisor（検証プログラム）が文書ストアへ保存・照合・搬入
       -> Worker（エンジンB、または人間）
       -> Report + 成果物の固定参照
       -> Architectが評価 -> Gate -> State更新
@@ -35,8 +37,9 @@ Issue -> 認証・権限・重複検査 -> Task T-001 r1を文書ストアへ
 ## C. 全部エージェントで接続する
 
 ```text
-イベント -> Source Adapter -> 確定Taskを保存
-         -> Architect Agent -> Supervisor Agent -> Worker Agent
+イベント -> Source Adapter -> Architect Agentが起草・内容確定
+         -> Supervisor AgentがTaskを保存・照合・搬入
+         -> 承認済みの起動経路 -> Worker Agent
          -> Reportを保存 -> 独立確認 -> Decisionを保存
          -> 承認済みPolicyの範囲内で次Taskを発行・保存
 ```
@@ -56,6 +59,8 @@ T-001 r1 -> Report -> 独立確認 -> 採用判断 D-001
          -> 次のTask T-002 r1
 ```
 
+既存のsavepoint・起動キットが必要事項を満たせば、それをStateとして利用できる。
+新旧Architectが並存しても、同じ番号空間へ発行するのは現在の担当だけとする。
 引継ぎテストでは新担当に旧会話を渡さず、Stateと必要な参照だけを渡す。
 受入判断や未回収Reportが再取得できなければ不合格。会話の要約だけでは代用しない。
 障害時の交代では、前任が実行中だった操作を完了扱いせず、実体照合から始める。
@@ -66,3 +71,5 @@ Source Adapterは出典・発行権限・イベントID・Task固定版を対応
 Engine Adapterは必要能力、権限、入力文書、実行所有者、上限、停止、結果保存を対応付ける。
 Storage / Transport Adapterは固定参照、保持、アクセス、配送確認、再送を定義する。
 対応APIや実装がない場合は手動文書運搬へ戻し、接続済みとは表示しない。
+同梱ブリッジは固定Workerを起動するだけで、上記B/Cの汎用ルーティングは実装していない。
+登録台帳の前に[接続定義](worker-connection.md)を確認する。

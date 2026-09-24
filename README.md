@@ -7,18 +7,23 @@ A document-constrained handoff protocol for work across humans, agents, models, 
 > Replace the participants. Preserve the task, the decisions, and the artifacts.
 
 TAI defines the contract between roles, not a required engine or orchestration service.
-A chat, issue, email, API request, or event can initiate work. Before execution, an
-authorized issuer turns that input into a durable Task document. Reports, decisions,
-and artifact references survive the sessions that produced them.
+A chat, issue, email, API request, or event can initiate work. Before execution,
+the Architect authors and authorizes the complete Task; the Supervisor writes,
+persists, and delivers the issued document. Authorship is not filesystem access.
+Reports, decisions, and artifact references survive the sessions that produced them.
 
 ```text
 Chat / Issue / Email / API / Event / Agent / Human
                          |
-              Authorized Task document
+        Architect: author + authorize
                          |
-         Architect -> Supervisor -> Worker
-              ^                       |
-              +--- Report + Evidence -+
+       Supervisor: write + persist + deliver
+                         |
+             Approved runner -> Worker
+                         |
+          Report + Evidence -> Supervisor
+                         |
+                Architect: evaluate
                          |
               Decision / Gate / State
                          |
@@ -52,6 +57,8 @@ also cost time and tokens.
 | [Core protocol](docs/protocol.md) | Normative contract, lifecycle, gates, recovery, security |
 | [Operations](docs/operations.md) | Archiving, evidence, integrity, Git and shell procedures |
 | [Examples](docs/examples.md) | Manual, mixed-engine, and agent-connected handoffs |
+| [Worker connection](docs/worker-connection.md) | Current fixed connection and proposed profile extension |
+| [Field reconciliation](docs/field-reconciliation.md) | Operational feedback, corrections, and unverified items |
 | [Migration](docs/migration-v0.2.md) | Explicit changes from v0.1.0 and compatibility limits |
 | [Changelog](CHANGELOG.md) | Release-candidate scope and known limitations |
 
@@ -60,7 +67,8 @@ The normative specification and operational guides are currently in Japanese.
 ## Minimal adoption — no Claude account required
 
 1. Use [templates/task.md](templates/task.md) to document objective, scope, authority,
-   acceptance criteria, source, and stop conditions. Persist it before dispatch.
+   acceptance criteria, source, and stop conditions. The Architect determines the
+   content; the Supervisor persists the issued version before dispatch.
 2. Give a capable Worker only the Task and its explicitly referenced materials.
    Record results with [templates/report.md](templates/report.md).
 3. Check evidence, record the decision and current state using
@@ -74,6 +82,9 @@ this contract. The templates are not an autonomous scheduler or an API integrati
 The `.ai/task.md` and `.ai/report.md` windows, their existing Git frontmatter,
 `claude/architect` and `claude/T-*` carrier paths, notification format, and report
 return path remain in place. The bundled shell bridge is unchanged in this release.
+The Supervisor writes the actual `.ai/task.md`; the Bridge starts the fixed Claude
+Code Worker. No multi-Worker registry or routing engine is implemented. An archived
+Task is the issued commit's document, not a reconstructed copy of the chat draft.
 
 For a new installation, copy:
 
@@ -130,6 +141,9 @@ to touch it safely, and TAI who decides and how work changes hands.
 入口はチャットでも、Issueでも、メールでも、APIでも、別のエージェントでもよい。
 ただし、実行前に権限を確認し、目的・範囲・受入条件・停止条件をTask文書へ確定する。
 実行後もReport・判断・成果物の参照を残し、次の担当者が読み直せる状態にする。
+**Architectが全文を起草・確定し、現場監督がtask.mdをファイル化・保存・搬入する。**
+保存する正本はWorkerへ渡した発行commitの文書。起草元のチャットとは区別する。
+既存のsavepoint・起動キットで必要な状態を引き継げるなら、新しい台帳への転記は不要。
 
 Architect（司令塔）、Supervisor（現場監督）、Worker（実行者）は役割であり、
 固定のモデル・サービス・セッションではない。すべてをエージェントで接続してもよい。

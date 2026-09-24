@@ -10,18 +10,25 @@ Coreとアダプターを併せて導入する。詳細は `references/protocol.
 
 ## 0. 役割
 
-Architectは設計・Task発行・Report評価・Gate判定を担う。
-Supervisorは運搬と機械チェック、承認済みGit操作のみを担い、評価・推奨・起案はしない。
+ArchitectはTask全文の起草・内容と版の確定・発行指示、Report評価・Gate判定を担う。
+Supervisorは受け取った完成済み本文のファイル化・保存・搬入と機械チェック、承認済みGit操作を担う。
+SupervisorはTaskを材料から起案せず、内容の評価・推奨・変更をしない。
+Owner / USERは環境・接続・既定値・許可を承認する。書込み担当と内容の権限を混同しない。
 WorkerはTaskに限って実装し、Reportと証拠を残す。
 これらは固定のモデルやセッションではない。Claude Codeはこのアダプターの実装例である。
 
 Architect・Supervisorも交代できる。ただし有効なPolicy、Taskの版、採用判断、Report参照、
 実行中処理、承認待ちを永続Stateから再取得し、実体と照合してから着任する。
 Taskの現在位置だけを完全な復旧状態とみなさない。前任の会話を唯一の記憶にしない。
+必要事項を満たす既存savepoint・起動キットを使ってよい。起動照合で必要なGit履歴・固定SHAを
+取得できるかも確認し、shallow等による欠損時は権限内で補ってから再開する。
+前任の承認済みGateは対象版と根拠を照合して引き継ぎ、交代だけを理由に再実行しない。
 
 Supervisorの責務は次に限定する。
 
-1. 発行済みTaskの原文・版・権限・書式を検査し、変更せず運ぶ。不備は差し戻す。
+1. Architectの完成済み本文と発行指示を受け、版・権限・書式を確認し `.ai/task.md` として
+   ファイル化・保存・commit・搬入する。固定前の限定的な整形はoperationsの規則に従い記録する。
+   発行正本固定後は原文を変更しない。内容の不足・未承認差異はArchitectへ差し戻す。
 2. Reportを固定SHAから取得し、変更範囲、実装とReportのcommit分離、Task不変、
    frontmatter、mainと作業ツリーの状態を確認する。全文diffを独立取得する。
 3. 承認済みの統合・公開操作を中継または権限内で実行する。
@@ -34,8 +41,10 @@ Supervisorの責務は次に限定する。
 ## 1. 手番と順序
 
 ```text
-発行者 -> Task保存 -> Supervisorの機械チェック・搬入
-      -> Workerの実行 -> Report保存・返送
+Architectが全文起草・内容確定・発行指示
+      -> USERまたは認可されたTransportが搬送
+      -> Supervisorがファイル化・保存・照合・commit・搬入
+      -> Bridgeが承認済み手順で起動 -> Workerの実行 -> Report保存・返送
       -> Supervisorの独立確認 -> Architectの採否・Gate
       -> State更新・archive・reset -> 次Taskまたは停止
 ```
@@ -43,6 +52,8 @@ Supervisorの責務は次に限定する。
 発行・実行の手番ではTaskとReportを同時に起案しない。Gate後の機械的resetは別の管理操作。
 WorkerはTaskを書き換えず、ArchitectはReportを書き換えない。
 Workerは次Taskを発行しない。自動handoffでもこの役割境界を維持する。
+既存Bridgeの起動先は固定のClaude Codeであり、Supervisorが複数Workerを選ぶ処理ではない。
+起動の事前承認と起動コマンドの実行者は別。詳細は[接続定義](../../../docs/worker-connection.md)。
 
 前Taskのmain統合・archive・reset・originへの反映が完了するまで次Taskを搬入しない。
 このアダプターは単一窓口・共有作業ツリーの直列実行。Bridgeは1リポジトリ1プロセスとし、
@@ -147,7 +158,8 @@ Task枝の統合だけでなくarchiveとresetまで反映されたことを確�
 
 ## 6. Archive・Stable Point
 
-発行Task原文は `.ai/archive/T-XXX_task_rN.md` に保存する。
+発行正本はWorkerへ渡したcommitの `.ai/task.md`。その原文を `.ai/archive/T-XXX_task_rN.md` に保存する。
+Architectのチャット本文を再構成して保存物の代わりにしない。発行commitの完全SHAを引継ぎ文書に残す。
 Gate時はarchiveと窓口resetを同じcleanup commitにし、差戻し・取消でも旧版を保全する。
 原文のstatusを完了状態へ書き換えない。採否はState / Decisionに記録する。
 Reportは既存返送先に保持してよいが、後任からも固定版を取得できること。

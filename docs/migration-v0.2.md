@@ -3,6 +3,9 @@
 基準: 公開mainの `28a632ef89562519d9c82260c75f94658a30cde9`。
 本版は互換ワイヤ形式を維持するが、思想・運用まで無変更ではない。
 移行はOwnerが承認したStable Pointで行う。稼働中のTaskに遡及適用しない。
+下表は公開v0.1.0との比較であり、案件ローカルの「現行版」全般についての断定ではない。
+担当交代・Task archive等を既に運用している案件では、実体と不足分を照合して取り込む。
+2026-09-25の[運用照合](field-reconciliation.md)を参照。
 
 ## 変えるもの
 
@@ -24,6 +27,10 @@ Reportを勝手に上書きしても既存ブリッジの重複通知キーで�
 
 ## 変えないもの
 
+Architectによる全文起草・内容確定・発行指示と、Supervisorによるファイル化・保存・搬入を分ける。
+これは新しい役割の追加ではなく、既存の書記責務の明文化である。原文不変の基準は発行正本固定後。
+固定前に許可された整形の境界は[operations.md](operations.md)に従う。
+
 Git Taskの5必須キー（task_id / revision / status / commit / push）と任意model、
 Reportの5必須キー（task_id / revision / status / branch / commit）、
 `.ai/task.md` / `.ai/report.md`、`claude/architect` / `claude/T-*`、通知行、
@@ -42,11 +49,13 @@ Reportの5必須キー（task_id / revision / status / branch / commit）、
 3. `docs/`、`templates/`、`scripts/task_archive.py` と更新済み `.claude/skills/tai/` を導入する。
    `.gitattributes` のarchive規則も既存設定と競合しないよう取り込む。
    新規導入だけ `.ai/` をコピーする。既存案件のtask/report/configを配布物で上書きしない。
-4. `templates/state.md` を基に `.ai/state.md` または同等の永続文書を作る。
+4. 既存のsavepoint・起動キット・裁定台帳が必要情報を満たすか確認し、満たせばそのまま使う。
+   不足時だけ `templates/state.md` を参考に補う。新しい並行台帳は必須ではない。
    現在のPolicy、Task一覧、採用判断、Report参照、承認待ち、次番号を実体と照合して記入する。
 5. 手動 / 半自動 / エージェント接続のプロファイルを明示し、Ownerが承認する。
    不明なGateはconfirmとし、`task_start: confirm` では `--no-autostart` を使う。
-6. 小さなTaskで発行→実行→Report→独立確認→archive→reset→再開を検証する。
+6. 小さなTaskで起草→Supervisorのファイル化・保存→起動→Report→独立確認→archive→reset→再開を検証する。
+   Workerの固定接続は[worker-connection.md](worker-connection.md)へ整理し、実際の起動定義と照合する。
 7. 別セッションからStateだけを入口に再取得する引継ぎテストを行う。
 
 過去Taskを回収できる場合はGitの固定commitから回収する。

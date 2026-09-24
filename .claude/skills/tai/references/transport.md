@@ -10,10 +10,13 @@ Coreは運搬・エンジン非依存。本書と同梱shellスクリプトはCl
 Architectのモデルは固定しない。モデル変更は権限を広げない。
 簡易パーサーとの互換性のため値にinline commentや引用符を付けない。
 必要な能力、書込み範囲、シェル許可、対話の要否を発行前に検査する。
+固定接続の所在と将来のWorkerプロファイル案は[worker-connection.md](../../../../docs/worker-connection.md)。
+今回の版にはWorker登録・自動選定・新しいconfig読取実装は含めない。
 
 ## 2. 手動フォールバック
 
-USERがTaskを文書として保存・照合してSupervisorへ渡し、Workerを手動起動できる。
+USERがArchitectの完成済み本文と発行指示をSupervisorへ渡す。SupervisorがTaskをファイル化・
+保存・照合・搬入した後、承認済みの手順でWorkerを手動起動できる。
 モデル・Task IDは実値に置き換える。
 
 ```bash
@@ -53,7 +56,7 @@ bash .claude/skills/tai/scripts/notify-architect.sh .ai/report.md
 ```bash
 git fetch origin
 git checkout -B claude/architect origin/main
-# 発行済みTaskを原文のまま配置し、照合してcommitする。
+# Supervisorが完成済み本文をtask.mdとして配置し、許可された整形を記録して発行正本をcommitする。
 git push origin claude/architect
 ```
 
@@ -95,4 +98,5 @@ Python・grep・wc・sha256sumは既定で含まれない。許可設定を推�
 
 Gate操作やローカルmain同期の間はBridgeとWorkerを停止・排他する。
 同期は `git fetch origin` の後に `git merge --ff-only origin/main`。
-Task枝の統合は別の承認済み `--no-ff` 操作である。
+Task枝の統合は別の承認済み操作であり、同梱アダプターでは `--no-ff` を既定例とする。
+案件ローカルで承認済みのff方式と混同せず、方式を変える場合は別途承認する。
