@@ -1,0 +1,2 @@
+# Issued Task archives are exact byte records, not normalized Markdown.
+.ai/archive/*_task_r*.md -text -filter
