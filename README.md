@@ -1,244 +1,171 @@
 # TAI-Protocol
 
-**Task–Architect Interchange**
+**Task–Architect Interchange · v0.2.0-rc.1**
 
-A handoff protocol for AI-delegated development where the architect stays in the chat, the supervisor stays mechanical, and the handoff stays in human hands.
+A document-constrained handoff protocol for work across humans, agents, models, and tools.
 
-> The protocol automates the transport, never the interchange.
+> Replace the participants. Preserve the task, the decisions, and the artifacts.
 
-日本語は下にあります / Japanese follows below.
+TAI defines the contract between roles, not a required engine or orchestration service.
+A chat, issue, email, API request, or event can initiate work. Before execution,
+the Architect authors and authorizes the complete Task; the Supervisor writes,
+persists, and delivers the issued document. Authorship is not filesystem access.
+Reports, decisions, and artifact references survive the sessions that produced them.
 
----
-
-## How It Works
-
-```
-USER ⇄ Architect (chat threads)
-         │  writes task.md          ← you paste it down   【manual action 1】
-         ▼
-      Supervisor (Claude Code cloud session)
-         │  pushes to carrier branch; local bridge fast-forwards main
-         ▼
-      Worker (Claude Code, headless)
-         │  implements; writes report.md → claude/T-xxx
-         ▼
-      Bridge (local, one-line notification) → Supervisor conformance check
-         │                                   ← you carry the report up 【manual action 2】
-         ▼
-USER ⇄ Architect (evaluates, decides, writes the next task)
-```
-
-Three layers, strictly separated:
-
-- **Architect** — your chat threads. Designs, judges, holds the thread tree. Cannot write to the repository.
-- **Supervisor** — a cloud Code session. Mechanical repository work and conformance checks only. Never judges.
-- **Worker** — stateless implementer. `task.md` in, `report.md` out.
-
-The two manual actions are the protocol's core feature, not a limitation. See [docs/concept.md](docs/concept.md) for why.
-
-## Getting Started
-
-**What to copy into your repository:**
-
-```
-.claude/skills/tai/     the skill: SKILL.md, references/, templates/, scripts/
-.ai/                    message directory: task.md / report.md placeholders,
-                        config.yaml (blank), .gitignore
+```text
+Chat / Issue / Email / API / Event / Agent / Human
+                         |
+        Architect: author + authorize
+                         |
+       Supervisor: write + persist + deliver
+                         |
+             Approved runner -> Worker
+                         |
+          Report + Evidence -> Supervisor
+                         |
+                Architect: evaluate
+                         |
+              Decision / Gate / State
+                         |
+                 Next Task or Stop
 ```
 
-**Claude-side setup:**
+All three roles are replaceable. A role can be performed by a human, an LLM-backed
+agent, or an appropriately capable program. One implementation can host multiple
+roles, but their authority and records stay distinct. Fully agent-connected workflows
+are allowed; bypassing documents or approval policy is not.
 
-1. Create a Claude project for your repository. Add the repo to project knowledge via the GitHub integration (this lets the Architect read the protocol files and your code).
-2. Start a cloud Code session on the repository (branch: main) at claude.ai/code. This session is your Supervisor. Send it one line: *"Read `.claude/skills/tai/SKILL.md` and take the Supervisor role."*
-3. Record the session ID: set the `SUPERVISOR_SESSION` environment variable on the machine that runs the bridge (takes priority), or fill `supervisor_session` in `.ai/config.yaml`.
+## What changed in 0.2
 
-**Run the bridge** (local, one process per repository, from a terminal — never from inside a Code session):
+- **Engine and source-channel independence:** Claude Code is an adapter, not the protocol.
+- **Document-constrained execution:** input becomes an issued Task before side effects;
+  results and approvals are recorded before the next handoff.
+- **Replaceable Architect, Supervisor, and Worker:** durable state supports a fresh
+  session; conversation history is not the sole source of truth.
+- **Transport is not authority:** manual and automated delivery obey the same gates.
+- **Input and output assets:** archive issued Tasks and returned Reports without rewriting their bytes.
+
+Long-lived projects do not require long-lived prompts. Cost reduction is a design
+objective, not a guarantee: retrieval, state maintenance, verification, and rework
+also cost time and tokens.
+
+## Start here
+
+| Document | Purpose |
+|---|---|
+| [Concept](docs/concept.md) | Why documents, replaceable roles, and retained human authority |
+| [Core protocol](docs/protocol.md) | Normative contract, lifecycle, gates, recovery, security |
+| [Operations](docs/operations.md) | Archiving, evidence, integrity, Git and shell procedures |
+| [Examples](docs/examples.md) | Manual, mixed-engine, and agent-connected handoffs |
+| [Worker connection](docs/worker-connection.md) | Current fixed connection and proposed profile extension |
+| [Field reconciliation](docs/field-reconciliation.md) | Operational feedback, corrections, and unverified items |
+| [Migration](docs/migration-v0.2.md) | Explicit changes from v0.1.0 and compatibility limits |
+| [Changelog](CHANGELOG.md) | Release-candidate scope and known limitations |
+
+The normative specification and operational guides are currently in Japanese.
+
+## Minimal adoption — no Claude account required
+
+1. Use [templates/task.md](templates/task.md) to document objective, scope, authority,
+   acceptance criteria, source, and stop conditions. The Architect determines the
+   content; the Supervisor persists the issued version before dispatch.
+2. Give a capable Worker only the Task and its explicitly referenced materials.
+   Record results with [templates/report.md](templates/report.md).
+3. Check evidence, record the decision and current state using
+   [templates/state.md](templates/state.md), then issue a new Task or stop.
+
+A filesystem, versioned repository, or other durable document store can implement
+this contract. The templates are not an autonomous scheduler or an API integration.
+
+## Existing Claude Code / Git workflow
+
+The `.ai/task.md` and `.ai/report.md` windows, their existing Git frontmatter,
+`claude/architect` and `claude/T-*` carrier paths, notification format, and report
+return path remain in place. The bundled shell bridge is unchanged in this release.
+The Supervisor writes the actual `.ai/task.md`; the Bridge starts the fixed Claude
+Code Worker. No multi-Worker registry or routing engine is implemented. An archived
+Task is the issued commit's document, not a reconstructed copy of the chat draft.
+
+For a new installation, copy:
+
+```text
+docs/                         core and operating rules
+templates/                    engine-neutral document templates
+.gitattributes                preserve archived Task and Report bytes in Git
+scripts/task_archive.py       optional Python 3.9+ archive helper
+.claude/skills/tai/            Claude Code / Git adapter and existing bridge
+.ai/                          placeholder windows and blank configuration
+```
+
+Start the Supervisor with: “Read `.claude/skills/tai/SKILL.md` and take the Supervisor
+role.” Configure `SUPERVISOR_SESSION` locally; do not commit live session credentials.
+Follow [transport.md](.claude/skills/tai/references/transport.md) before running the
+bridge. Use `--no-autostart` whenever Task Start requires confirmation or prerequisites
+have not been checked. Automation is not enabled by upgrading the documentation.
+
+At Gate, archive **both the issued Task and returned Report before resetting either
+window** (decision 17-J, 2026-09-26). First verify each window against its fixed
+source commit and confirm matching Task IDs and revisions.
 
 ```bash
-bash .claude/skills/tai/scripts/bridge-poll.sh 30        # poll every 30s
-bash .claude/skills/tai/scripts/bridge-poll.sh 30 --no-autostart   # notify only; you start Workers manually
+python scripts/task_archive.py --report .ai/report.md
 ```
 
-On macOS, run it under `caffeinate -i` to prevent sleep. The bridge fast-forwards Architect tasks into main, starts headless Workers, and sends one-line arrival notifications. It never reads report contents.
+This preserves `.ai/archive/T-XXX_task_rN.md` and `.ai/archive/T-XXX_report_rN.md`.
+Git history or a chat copy does not replace these explicit archives. Transfer Report,
+diff, and document text directly from tool output; do not substitute summaries or
+“as previously reported” references for the original text (16-U).
 
-Then open a chat thread, have the Architect write your first `task.md`, and paste it to the Supervisor. The loop is running.
+The helper only copies and verifies. It never resets files, approves work, commits,
+pushes, or runs an agent. Both archives and both window resets belong in the same
+cleanup commit. If either archive fails, keep both windows and reconcile before
+retrying. The task-only command remains available for preservation before a Report
+arrives; it is not sufficient for Gate cleanup. See [operations](docs/operations.md).
 
-Note: the skill body (SKILL.md, references, templates) is currently in Japanese. The protocol itself is language-agnostic — an English translation is planned.
+## Validation
 
-## Things You Will Hit First
-
-**Headless Workers cannot edit `.claude/`.** Tasks that touch the skill's own files (or anything under `.claude/`) must run in an interactive Worker — a session where you can answer the edit-approval prompts. Mark such tasks explicitly; a headless Worker receiving one should return a blocked report immediately.
-
-**Integrate main before the next task.** One cycle ends only when the task branch is merged to local main (`--no-ff`), pushed to origin, and `.ai/task.md` / `report.md` are reset to placeholders. Skipping the reset works for a while and then quietly poisons a future cycle — treat the three steps as one routine. The next task must not be issued until origin/main reflects the last one.
-
-**Windows notes.** Set LF normalization via `.gitattributes` (`core.autocrlf=true` is the primary hazard). Run the scripts from Git Bash, not PowerShell — PowerShell lacks `sed` and `&&` chaining. When writing your own task instructions, label PowerShell and Git Bash commands distinctly.
-
-## Model-Agnostic Architect
-
-The Architect is a role, not a model. It has been exercised end-to-end by both Claude and ChatGPT: correct `task.md` formatting, consistent stops at `next_task: confirm`, correct commit/push gate discrimination, and detection of revision-mismatched reports. Any chat-side LLM that can follow the protocol can hold the seat.
-
-## What TAI Is Not
-
-- Not an orchestrator — there is no central engine; the Architect converses, everything else reacts.
-- Not a state store — the thread tree is never mirrored into a database.
-- Not a content-aware pipe — the bridge sends one line, never the report body.
-- Not to be completed — the two manual handoffs will not be automated. Ever.
-
-Full version in [docs/concept.md](docs/concept.md).
-
-## Repository Contents
-
-```
-tai-protocol/
-├── README.md
-├── LICENSE                      MIT
-├── docs/
-│   └── concept.md               Design philosophy: thesis, layers, the name, constraints
-├── .claude/
-│   └── skills/
-│       └── tai/
-│           ├── SKILL.md         Daily rules + Supervisor charter
-│           ├── references/
-│           │   ├── protocol.md  Full handoff protocol (gates, arbitration, cycle order)
-│           │   └── transport.md Carrier-branch and bridge mechanics
-│           ├── templates/
-│           │   ├── task.md
-│           │   └── report.md
-│           └── scripts/
-│               ├── notify-architect.sh   One-line notification sender
-│               └── bridge-poll.sh        Local polling bridge
-└── .ai/
-    ├── task.md                  Placeholder
-    ├── report.md                Placeholder
-    ├── config.yaml              supervisor_session (blank; env var takes priority)
-    └── .gitignore               Excludes .bridge-state
+```bash
+python -m unittest discover -s tests -v
 ```
 
-*Naming note: the skill directory is `tai`; the repository is `tai-protocol`.*
+Tests cover archive integrity, overwrite refusal, malformed inputs, and a temporary
+Git repository's paired archive-plus-reset commit, including Report failures. They do not certify external engines,
+cloud sessions, permissions, or end-to-end bridge operation.
 
-## Related Protocols
+## Status and license
 
-Part of the StateToolsLab protocol family:
+Experimental **release candidate**, not a claim of production-ready multi-engine
+orchestration. Wire compatibility is retained; philosophy and some operating rules
+change explicitly. No automatic migration, release, or deployment is implied.
 
-- [SAI](https://github.com/StateToolsLab/sai-protocol) — **what to touch**: stable structural anchor IDs
-- SPP — **how to touch it safely**: structured patch process
-- TAI — **who decides, and how the work changes hands**
+MIT. Part of the StateToolsLab protocol family: SAI concerns what to touch, SPP how
+to touch it safely, and TAI who decides and how work changes hands.
 
-## Status
-
-Experimental. The protocol may change. Constraints in `docs/concept.md` §5 are dated platform observations (2026-08) and will be re-derived if the platform moves.
-
-## License
-
-MIT
-
----
 ---
 
 # TAI-Protocol（日本語）
 
-**Task–Architect Interchange**
+**エンジンや担当者ではなく、文書を接点に仕事を引き継ぐプロトコル。**
 
-AI に実装を委譲する開発のための handoff プロトコル。Architect はチャットに、Supervisor は機械的作業に、そして handoff は人間の手に留まる。
+入口はチャットでも、Issueでも、メールでも、APIでも、別のエージェントでもよい。
+ただし、実行前に権限を確認し、目的・範囲・受入条件・停止条件をTask文書へ確定する。
+実行後もReport・判断・成果物の参照を残し、次の担当者が読み直せる状態にする。
+**Architectが全文を起草・確定し、現場監督がtask.mdをファイル化・保存・搬入する。**
+保存する正本はWorkerへ渡した発行commitの文書。起草元のチャットとは区別する。
+既存のsavepoint・起動キットで必要な状態を引き継げるなら、新しい台帳への転記は不要。
+裁定17-Jにより、GateではTaskとReportを `.ai/archive/` へ原文保存し、両窓口の復帰と同じcommitにする。
+Report・diff・本文はツール出力のまま転記し、要約や「既報告どおり」等で原文を省略しない（16-U）。
 
-> このプロトコルが自動化するのは運搬であって、交わりではない。
+Architect（司令塔）、Supervisor（現場監督）、Worker（実行者）は役割であり、
+固定のモデル・サービス・セッションではない。すべてをエージェントで接続してもよい。
+**自動化してよいのは接続であって、文書と権限の境界を消してよいわけではない。**
 
----
+永続するのは、発行Task、採用した判断、現在状態、成果物、検証根拠。
+会話全文や同じAIの記憶を必須にしないため、司令塔・現場監督・Workerを交代できる。
+その際も、未完了処理と外部への副作用を照合してから再開する。
 
-## 仕組み
+v0.1.0の「手動2回」は引き続き選べる運用として残す。v0.2では、それを全利用者への
+義務とせず、手動・半自動・全自動を同じ文書規約と承認ポリシーの下に置く。
+既存ブリッジを汎用化した実装が完成したという意味ではない。
 
-```
-USER ⇄ Architect（チャットのスレッド群）
-         │  task.md を書く         ← あなたが貼って渡す 【手動アクション 1】
-         ▼
-      Supervisor（Claude Code クラウドセッション）
-         │  運搬ブランチへ push。ローカルのブリッジが main へ fast-forward
-         ▼
-      Worker（Claude Code、headless）
-         │  実装し、report.md を claude/T-xxx へ
-         ▼
-      Bridge（ローカル、1行通知）→ Supervisor が規約適合チェック
-         │                        ← あなたが report を持ち帰る 【手動アクション 2】
-         ▼
-USER ⇄ Architect（評価・判断・次の task）
-```
-
-三層は厳密に分離されます。
-
-- **Architect** — あなたのチャットスレッド群。設計・判断・Thread Tree の保持。リポジトリには書けない
-- **Supervisor** — クラウド Code セッション。機械的なリポジトリ作業と規約チェックのみ。判断しない
-- **Worker** — 文脈を持たない実装者。`task.md` が入力のすべて、`report.md` が出力のすべて
-
-手動2アクションは制約ではなく、このプロトコルの中核機能です。理由は [docs/concept.md](docs/concept.md) に。
-
-## 導入
-
-**リポジトリにコピーするもの:**
-
-```
-.claude/skills/tai/     skill 本体: SKILL.md、references/、templates/、scripts/
-.ai/                    メッセージ置き場: task.md / report.md のプレースホルダ、
-                        config.yaml（空欄）、.gitignore
-```
-
-**Claude 側のセットアップ:**
-
-1. リポジトリ用の Claude プロジェクトを作成し、GitHub 連携でリポジトリをプロジェクト知識に追加する（Architect が規約ファイルとコードを読めるようにする）
-2. claude.ai/code でリポジトリ（ブランチ: main）のクラウド Code セッションを開始する。これが Supervisor。最初に一行送る: *「`.claude/skills/tai/SKILL.md` を読み、Supervisor の役割に就くこと」*
-3. セッション ID を記録する。ブリッジを動かすマシンで環境変数 `SUPERVISOR_SESSION` を設定する（こちらが優先）か、`.ai/config.yaml` の `supervisor_session` に記入する
-
-**ブリッジの起動**（ローカル、リポジトリごとに1プロセス、ターミナルから。Code セッション内から起動しないこと）:
-
-```bash
-bash .claude/skills/tai/scripts/bridge-poll.sh 30        # 30秒間隔でポーリング
-bash .claude/skills/tai/scripts/bridge-poll.sh 30 --no-autostart   # 通知のみ。Worker は手動起動
-```
-
-macOS では `caffeinate -i` 配下で実行してスリープを防ぐこと。ブリッジは Architect の task を main へ fast-forward し、headless Worker を起動し、到着を1行で通知します。report の中身は読みません。
-
-あとはチャットのスレッドを開き、Architect に最初の `task.md` を書かせて、Supervisor に貼るだけです。ループが回り始めます。
-
-注: skill 本体(SKILL.md / references / templates)は現在日本語です。プロトコル自体は言語非依存です。
-
-## 最初に踏む石
-
-**headless Worker は `.claude/` を編集できません。** skill 自身のファイル（および `.claude/` 配下すべて）に触れる task は、編集承認プロンプトに応答できる対話モードの Worker で実行してください。該当 task には明示のマークを付けること。headless Worker がこれを受け取った場合は、着手前に即座に blocked report を返すのが規約です。
-
-**次の task の前に main を取り込むこと。** 1サイクルの終わりは、task ブランチのローカル main への merge（`--no-ff`）、origin への push、そして `.ai/task.md` / `report.md` のプレースホルダ戻しが揃った時点です。プレースホルダ戻しの省略はしばらく動いてしまい、後のサイクルを静かに汚染します——3手順を1つの定型として扱ってください。origin/main に前の task が反映されるまで、次の task を発行してはいけません。
-
-**Windows の要点。** `.gitattributes` で LF 正規化を設定すること（`core.autocrlf=true` が最大の危険源）。スクリプトは PowerShell ではなく Git Bash から実行すること——PowerShell には `sed` も `&&` 連結もありません。自分で task の指示を書く際は、PowerShell 用と Git Bash 用のコマンドを明確に区別して表記してください。
-
-## Architect はモデル非依存
-
-Architect はモデルではなく役割です。Claude と ChatGPT の双方で一連の往復を完遂済み: `task.md` の書式遵守、`next_task: confirm` での一貫した停止、commit / push Gate の正確な使い分け、revision 不一致 report の検出まで確認されています。プロトコルに従えるチャット側 LLM であれば、この席に就けます。
-
-## TAI ではないもの
-
-- オーケストレーターではない — 中央エンジンは存在しない。Architect が対話し、他はそれに反応する
-- 状態ストアではない — Thread Tree をデータベースに複製しない
-- 内容を読むパイプではない — ブリッジが送るのは1行であり、report 本文は決して流さない
-- 完成させるものではない — 手動2アクションは今後も自動化しない
-
-完全版は [docs/concept.md](docs/concept.md) に。
-
-## リポジトリ構成
-
-英語版のツリーを参照してください（構成は同一です）。
-
-*名称について: skill ディレクトリ名は `tai`、リポジトリ名は `tai-protocol` です。*
-
-## 関連プロトコル
-
-StateToolsLab プロトコル群の一員です。
-
-- [SAI](https://github.com/StateToolsLab/sai-protocol) — **何を触るか**: 安定した構造アンカー ID
-- SPP — **どう安全に触るか**: 構造化されたパッチ手順
-- TAI — **誰が決め、どう手渡すか**
-
-## ステータス
-
-実験段階。プロトコルは変更される可能性があります。`docs/concept.md` §5 の制約は日付付きのプラットフォーム観測値（2026-08）であり、プラットフォームが変われば設計を再導出します。
-
-## ライセンス
-
-MIT
+導入・移行・制約は上の各文書を参照。現行案件へはStable Pointで段階的に適用する。

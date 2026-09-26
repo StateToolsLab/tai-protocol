@@ -1,131 +1,102 @@
-# tai — Transport Reference（Claude Code 固有）
+# tai — Transport Reference（Claude Code / Gitアダプター）
 
-SKILL.md の規約は運搬手段に依存しない。Claude Code 固有の手順はここに閉じ込める。
+Coreは運搬・エンジン非依存。本書と同梱shellスクリプトはClaude Code専用である。
+以下の構成は公開v0.1.0の実装を維持するもので、他エンジンへの接続実装ではない。
+2026-08に記録されたクラウド権限制約は歴史的な観測であり、現環境で導入前に確認する。
 
----
+## 1. モデルと能力
 
-## 1. モデル
+既存 `bridge-poll.sh` はTaskの任意 `model` を `--model` へ渡し、省略時 `sonnet` を使う。
+Architectのモデルは固定しない。モデル変更は権限を広げない。
+簡易パーサーとの互換性のため値にinline commentや引用符を付けない。
+必要な能力、書込み範囲、シェル許可、対話の要否を発行前に検査する。
+固定接続の所在と将来のWorkerプロファイル案は[worker-connection.md](../../../../docs/worker-connection.md)。
+今回の版にはWorker登録・自動選定・新しいconfig読取実装は含めない。
 
-役割は三層（Architect ＝ Claude チャットのスレッド群 ／ 現場監督 ＝ Code クラウドセッション ／
-Worker ＝ Claude Code）。定義と責務境界は SKILL.md §0。
+## 2. 手動フォールバック
 
-| 役割 | 既定モデル | 理由 |
-|---|---|---|
-| Architect | Opus | 設計判断、Thread Tree の保持、Gate 判定 |
-| Worker | **Sonnet** | task.md に閉じた実装作業。文脈を持たないため |
-
-### task ごとの指定
-
-task.md frontmatter の `model` は任意フィールドで、**省略時は `sonnet`**。
-
-```yaml
-model: opus      # この task だけ opus で回す
-```
-
-Worker を `sonnet` 以外にするのは、task.md 単体では解けない設計判断が実装中に必要だと
-Architect が事前に分かっている場合だけ。その場合は task.md 本文にモデル指定の理由を一行書く。
-
-この値は Worker 起動時に `--model` として渡す。Worker 自身がこの値を解釈する必要はない。
+USERがArchitectの完成済み本文と発行指示をSupervisorへ渡す。SupervisorがTaskをファイル化・
+保存・照合・搬入した後、承認済みの手順でWorkerを手動起動できる。
+モデル・Task IDは実値に置き換える。
 
 ```bash
-claude --model opus "Read .ai/task.md, ..."
+claude --model sonnet "Read .claude/skills/tai/SKILL.md and .ai/task.md. Take the Worker role, execute only the issued task, then write .ai/report.md and commit/push to claude/T-001. Do not integrate main or create a PR."
 ```
 
----
+権限・Task Start承認を先に確認する。`status: none` は実行しない。
+Taskに対話実行指定がある場合、headlessへ渡さない。
+共有作業ツリーで実行したWorkerはpush後にmainへ戻る。専用worktreeは独自の終了規約に従う。
 
-## 2. 手動運搬（フォールバック）
-
-Bridge を使わず、USER が自分で運ぶ最小構成。導入直後の動作確認や、Bridge 停止時の
-最終フォールバックとして常に利用可能。
-
-```text
-Architect（チャット）
-    │  task.md 本文を書く → USER が現場監督に貼る → 現場監督が反映（§4）
-    ▼
-Worker（ローカル Claude Code）
-    │  実装 → report.md を書く → commit → push（claude/<task_id>）
-    ▼
-USER が手動で通知を渡す（下記）
-```
-
-### Worker の起動
-
-```bash
-claude --model <task.md の model 値> "Read .ai/task.md, execute the task, then write .ai/report.md and commit/push to claude/<task_id>."
-```
-
-`model` が無ければ `sonnet`。
-
-- Worker は `claude/<task_id>` ブランチを作って作業する。
-- **main を触らない**（SKILL.md §4 の責務境界）。merge / `gh pr create` を実行しない。
-- `.ai/task.md` の `status: none` を見たら、何も実装せず Architect に確認する。
-- **push が済んだら `git checkout main` で作業ツリーを戻しておく。**
-  ローカル Worker は共有の作業ツリーで動くため、`claude/<task_id>` に居たまま終わると、
-  次の手番の操作がそのブランチ上で行われてしまう。これはブランチを切り替えるだけで
-  main の内容を変更しないので、§4 の「main を触らない」には抵触しない。
-
-### 手動フォールバック通知
-
-Bridge の有無に関わらず、USER が現場監督セッションに次の 1 行を渡せばループは成立する。
+通知のみのフォールバックは次の既存形式を維持する。
 
 ```text
 [handoff] report.md updated task_id=T-001 revision=1 branch=claude/T-001 commit=<短縮7桁>
 ```
 
-本文は貼らない。受け手は通知を受けたら自分で `git fetch` して report.md を読む。
-この経路は**常に利用可能な最終フォールバック**として残す。
+通知先はSupervisor。受け手がfetchして固定版のReportを取得する。
+通知は承認でもReport保全でもない。ArchitectへのReport返送は既存経路を維持する。
+自動返送アダプターを使う場合も、本文または固定参照の保持と取得可能性を別途保証する。
 
----
-
-## 3. Bridge
-
-Bridge はローカルで動かす（クラウドセッションの VM 内には claude.ai 認証が無く、
-セッション間でメッセージを送れないため。docs/concept.md §5 参照）。
+## 3. 通知ブリッジ
 
 ```bash
-scripts/notify-architect.sh [report.md のパス]   # 省略時 .ai/report.md
+bash .claude/skills/tai/scripts/notify-architect.sh .ai/report.md
 ```
 
-通知の宛先は**現場監督セッション**。環境変数 `SUPERVISOR_SESSION`、無ければ `.ai/config.yaml` の
-`supervisor_session` の順で解決し、report.md の frontmatter から
-`[handoff] report.md updated task_id=... revision=... branch=... commit=...` を組み立てて
-`claude -p --cloud` で 1 回だけ送信する。判断・再送はしない。失敗時（`ok:false` や実行失敗）は
-通知行を stdout に出し、現場監督セッションへ手で貼るよう促して exit 1。
+宛先は `SUPERVISOR_SESSION`、なければ `.ai/config.yaml` の `supervisor_session`。
+同梱実装はfrontmatterから1行を作り、`claude -p --cloud` で送信する。
+失敗時は手動転送用の通知行を表示する。自動再送・評価・Report本文配送は行わない。
+ライブのセッションIDや認証情報を公開リポジトリへ保存しない。
 
-## 4. Architect の task.md は claude/architect 経由で運ぶ
+## 4. Task搬入
 
-Architect（チャット）はリポジトリに書けないため、USER が task.md を現場監督セッションに貼り、
-現場監督がリポジトリへ反映する。現場監督（Code クラウドセッション）は main へ直接 push できないので、
-`claude/architect` ブランチ経由で運ぶ。
+従来のクラウド構成では `claude/architect` をcarrierにする。
+前便の統合・cleanup・pushと旧Task / Reportの保全が済んでから、現在のorigin/mainを起点にする。
 
 ```bash
 git fetch origin
 git checkout -B claude/architect origin/main
-# .ai/task.md を書いて commit
-git push -f origin claude/architect
+# Supervisorが完成済み本文をtask.mdとして配置し、許可された整形を記録して発行正本をcommitする。
+git push origin claude/architect
 ```
 
-背景：クラウドセッションは `claude/*` ブランチにしか push できない（main への push・origin の
-ブランチ削除は拒否される。docs/concept.md §5 参照）。
+過去のcarrierが残りnon-fast-forwardになる場合、安易な `push -f` は使わない。
+旧版保全と他の書き手の不在を確認し、承認したremote先端SHAを明示した
+`--force-with-lease=refs/heads/claude/architect:<期待する旧SHA>` を用いる。
+許可されなければ停止し、USERへ返す。未知の変更を上書きしない。
 
-**main への取り込み（fast-forward）と push はローカル側（USER または bridge-poll.sh）の責務**である。
+Carrierのmainへのfast-forwardは従来どおりローカル側が行う。
+この例外は認可されたTaskの運搬に限定し、実装のmain統合Gateと混同しない。
+Carrierに想定外のファイルが含まれないかSupervisorが確認する。
 
-## 5. bridge-poll.sh
+## 5. ポーリングブリッジ
 
 ```bash
-bash .claude/skills/tai/scripts/bridge-poll.sh [間隔秒（既定 30）] [--no-autostart]
+bash .claude/skills/tai/scripts/bridge-poll.sh 30
+bash .claude/skills/tai/scripts/bridge-poll.sh 30 --no-autostart
 ```
 
-責務は 3 つのみ：(a) `claude/architect` の更新検知 → main へ ff-only merge + push +
-Worker 起動、(b) `claude/T-*` の report.md 更新検知 → `notify-architect.sh` 呼び出し、
-(c) 処理済み位置を `.ai/.bridge-state` に記録（再起動後の重複防止）。判断・評価・再送はしない。
-`--no-autostart` は Task Start Gate = confirm 運用時に (a) を無効化するフラグ。
-実行には `SUPERVISOR_SESSION` 環境変数または `.ai/config.yaml` の `supervisor_session` が
-必要（`notify-architect.sh` が参照）。停止は Ctrl-C。
+1リポジトリ1プロセス。端末から起動し、他のセッションから重複起動しない。
+初回は現在のoriginを処理済みとして記録するため、Task搬入前に起動する。
+`--no-autostart` はTask搬入の自動取り込み・Worker起動を無効にし、Report通知を残す。
+Task Startがconfirm、能力検査が未完了、Task原文が未保全ならこのモードまたは手動運用にする。
 
-Worker は `-p` の headless セッションとして起動され、`--allowedTools
-"Edit,Write,Read,Glob,Grep,Bash(git *)"` により編集と git のみが許可される（`--dangerously-
-skip-permissions` は使わない）。`-p` は対話的な許可付与ができないため、この起動時フラグが無いと
-全書き込みが拒否されて停止する。
+同梱Bridgeは次だけを実装する。
 
-headless 起動が失敗する場合は、Desktop の対話セッションで Worker を手動起動するフォールバックとする。
+- carrier更新を検知し、mainへff-only merge / pushしてClaude Workerを起動する。
+- `claude/T-*` のReport更新を検知し、既存通知スクリプトを呼ぶ。
+- `.ai/.bridge-state` に処理済み位置を記録する。
+
+共有作業ツリーの直列運用であり、並行Worker、全Gateの強制、予算管理、汎用ルーティング、
+包括的な冪等性や自動archiveは実装していない。Supervisor / USERが運用で補完する。
+復旧時は「処理済み」と「実行成功」を同一視せず、Task・Report・外部副作用を確認する。
+
+既存allowlistは編集と列挙済みのGit・診断コマンド等に限定される。
+Python・grep・wc・sha256sumは既定で含まれない。許可設定を推測せず、
+[operations.md](../../../../docs/operations.md)の能力検査に従う。
+`--dangerously-skip-permissions` による回避はしない。
+
+Gate操作やローカルmain同期の間はBridgeとWorkerを停止・排他する。
+同期は `git fetch origin` の後に `git merge --ff-only origin/main`。
+Task枝の統合は別の承認済み操作であり、同梱アダプターでは `--no-ff` を既定例とする。
+案件ローカルで承認済みのff方式と混同せず、方式を変える場合は別途承認する。

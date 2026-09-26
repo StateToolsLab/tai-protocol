@@ -1,0 +1,3 @@
+# Task and Report archives preserve original bytes, not normalized Markdown.
+.ai/archive/*_task_r*.md -text -filter
+.ai/archive/*_report_r*.md -text -filter
