@@ -43,7 +43,7 @@ are allowed; bypassing documents or approval policy is not.
 - **Replaceable Architect, Supervisor, and Worker:** durable state supports a fresh
   session; conversation history is not the sole source of truth.
 - **Transport is not authority:** manual and automated delivery obey the same gates.
-- **Input-side assets:** archive each issued Task revision without rewriting its bytes.
+- **Input and output assets:** archive issued Tasks and returned Reports without rewriting their bytes.
 
 Long-lived projects do not require long-lived prompts. Cost reduction is a design
 objective, not a guarantee: retrieval, state maintenance, verification, and rework
@@ -91,7 +91,7 @@ For a new installation, copy:
 ```text
 docs/                         core and operating rules
 templates/                    engine-neutral document templates
-.gitattributes                preserve archived Task bytes in Git
+.gitattributes                preserve archived Task and Report bytes in Git
 scripts/task_archive.py       optional Python 3.9+ archive helper
 .claude/skills/tai/            Claude Code / Git adapter and existing bridge
 .ai/                          placeholder windows and blank configuration
@@ -103,15 +103,24 @@ Follow [transport.md](.claude/skills/tai/references/transport.md) before running
 bridge. Use `--no-autostart` whenever Task Start requires confirmation or prerequisites
 have not been checked. Automation is not enabled by upgrading the documentation.
 
-At Gate, archive the issued Task **before** resetting the windows:
+At Gate, archive **both the issued Task and returned Report before resetting either
+window** (decision 17-J, 2026-09-26). First verify each window against its fixed
+source commit and confirm matching Task IDs and revisions.
 
 ```bash
-python scripts/task_archive.py
+python scripts/task_archive.py --report .ai/report.md
 ```
 
+This preserves `.ai/archive/T-XXX_task_rN.md` and `.ai/archive/T-XXX_report_rN.md`.
+Git history or a chat copy does not replace these explicit archives. Transfer Report,
+diff, and document text directly from tool output; do not substitute summaries or
+“as previously reported” references for the original text (16-U).
+
 The helper only copies and verifies. It never resets files, approves work, commits,
-pushes, or runs an agent. Archive creation and window reset must be staged in the
-same cleanup commit by the authorized operator. See [operations](docs/operations.md).
+pushes, or runs an agent. Both archives and both window resets belong in the same
+cleanup commit. If either archive fails, keep both windows and reconcile before
+retrying. The task-only command remains available for preservation before a Report
+arrives; it is not sufficient for Gate cleanup. See [operations](docs/operations.md).
 
 ## Validation
 
@@ -120,7 +129,7 @@ python -m unittest discover -s tests -v
 ```
 
 Tests cover archive integrity, overwrite refusal, malformed inputs, and a temporary
-Git repository's archive-plus-reset commit. They do not certify external engines,
+Git repository's paired archive-plus-reset commit, including Report failures. They do not certify external engines,
 cloud sessions, permissions, or end-to-end bridge operation.
 
 ## Status and license
@@ -144,6 +153,8 @@ to touch it safely, and TAI who decides and how work changes hands.
 **Architectが全文を起草・確定し、現場監督がtask.mdをファイル化・保存・搬入する。**
 保存する正本はWorkerへ渡した発行commitの文書。起草元のチャットとは区別する。
 既存のsavepoint・起動キットで必要な状態を引き継げるなら、新しい台帳への転記は不要。
+裁定17-Jにより、GateではTaskとReportを `.ai/archive/` へ原文保存し、両窓口の復帰と同じcommitにする。
+Report・diff・本文はツール出力のまま転記し、要約や「既報告どおり」等で原文を省略しない（16-U）。
 
 Architect（司令塔）、Supervisor（現場監督）、Worker（実行者）は役割であり、
 固定のモデル・サービス・セッションではない。すべてをエージェントで接続してもよい。

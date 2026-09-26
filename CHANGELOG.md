@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased follow-up to 0.2.0-rc.1 — 2026-09-26
+
+- Adopt field decision 17-J: archive both Task and Report originals at Gate,
+  with both window resets in the same cleanup commit. Git history or chat retention
+  is no longer a substitute for the explicit Git-adapter Report archive.
+- Add `--report` and `--expected-report-sha256` to the archive helper. Validate
+  identity/revision agreement, Report metadata, hashes, and conflicts before copying.
+  Preserve exact bytes and refuse overwrites. Keep task-only CLI/API compatibility.
+- Preserve Report archive bytes under Git conversion; test paired archival, failures,
+  retry, and local Git cleanup. Partial filesystem publication never resets windows.
+- Reinforce 16-U: transfer report/diff/document text verbatim from tool output;
+  summaries and “as previously reported” cannot replace originals.
+- Record the originating project's rollout point without applying its Task numbers
+  globally. No automatic backfill, live-project changes, Bridge changes, or release.
+- Keep the earlier Supervisor-authorship clarification: the Architect authors the
+  complete Task; the Supervisor persists it. Permitted formatting precedes fixation.
+
 ## 0.2.0-rc.1 — 2026-09-24
 
 Release candidate for document-constrained, engine- and source-channel-independent

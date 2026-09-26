@@ -32,7 +32,8 @@ Supervisorの責務は次に限定する。
 2. Reportを固定SHAから取得し、変更範囲、実装とReportのcommit分離、Task不変、
    frontmatter、mainと作業ツリーの状態を確認する。全文diffを独立取得する。
 3. 承認済みの統合・公開操作を中継または権限内で実行する。
-4. Task原文のarchiveと窓口reset、Report参照と判断の保全を確認する。
+4. Gate時にTask・Report両原文をarchiveし、両窓口resetと同じcleanup commitにする（17-J）。
+   各原文との一致、ID・revision、固定参照と判断の保全を確認し、保存失敗時はresetしない。
 
 承認待ちを自己解決しない。何を待つかを表示して停止する。
 世代交代時は本書・references・Recovery Stateを読み、旧実行を照合する。
@@ -119,7 +120,10 @@ ID・revisionは受領Taskと一致させる。Workerだけでrevisionを増や�
 訂正が必要ならArchitectが新revisionを発行する。旧Reportを失わないよう先に保全する。
 
 実施内容、検証結果、未検証範囲、成果物、実際の副作用、未解決事項を記載する。
-全文diff貼付は任意で、省略時は自己申告する。SupervisorがTask全範囲を独立取得する。
+Workerによる全文diffの重複添付は任意で、省略時は自己申告する（16-S）。
+SupervisorはTask全範囲を独立取得し、report・diff・本文をツール出力のまま全量返送する（16-U）。
+手書き再生成、要約表記や「既報告どおり」等による省略・置換をしない。
+長文は欠落のない固定ファイル・分割で渡す。判断の説明は原文と別に添え、代替にしない。
 Reportのcompletedは受入承認ではない。
 
 ## 4. Gate
@@ -160,9 +164,19 @@ Task枝の統合だけでなくarchiveとresetまで反映されたことを確�
 
 発行正本はWorkerへ渡したcommitの `.ai/task.md`。その原文を `.ai/archive/T-XXX_task_rN.md` に保存する。
 Architectのチャット本文を再構成して保存物の代わりにしない。発行commitの完全SHAを引継ぎ文書に残す。
-Gate時はarchiveと窓口resetを同じcleanup commitにし、差戻し・取消でも旧版を保全する。
+Reportも `.ai/archive/T-XXX_report_rN.md` へ原文のまま保存する（17-J）。
+Nは対象Taskと一致するReportのrevision。Report固定commitのSHAは実装commit欄とは分けて記録する。
+Gate時はTask archive・Report archive・両窓口resetを同じcleanup commitにする。
+Git履歴や既存返送先への保存だけでは、このReport archiveを代替しない。
+差戻し・取消・新版差替え前も旧Taskと返送済み旧Reportを保全し、既存原文を上書きしない。
+両原文の一致・保存が確認できるまでresetしない。未着Reportを再構成して補わない。
 原文のstatusを完了状態へ書き換えない。採否はState / Decisionに記録する。
-Reportは既存返送先に保持してよいが、後任からも固定版を取得できること。
+
+```bash
+python scripts/task_archive.py --report .ai/report.md
+```
+
+ヘルパーは保存と照合のみ。Gate承認・Git操作・窓口resetは行わない。
 
 Stable Pointは採用判断であってcommitではない。判断と根拠・成果物版を永続化する。
 目的変更、未委譲の価値判断、Stable Point破棄、無許可の不可逆変更では裁定を要求する。

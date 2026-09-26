@@ -7,6 +7,18 @@
 担当交代・Task archive等を既に運用している案件では、実体と不足分を照合して取り込む。
 2026-09-25の[運用照合](field-reconciliation.md)を参照。
 
+## 2026-09-26追補：Report archive必須化（17-J）
+
+候補版の「Reportは既存履歴で再取得できれば別archiveは任意」という方針を更新する。
+Git運用のGateでは、TaskとReportの原文をそれぞれ `.ai/archive/T-XXX_task_rN.md` と
+`.ai/archive/T-XXX_report_rN.md` に保存し、両窓口resetと同じcleanup commitへ含める。
+Reportは対象TaskとID・revisionが一致する固定版から複写し、内容・statusを再編集しない。
+`python scripts/task_archive.py --report .ai/report.md` とReport用の `.gitattributes` 規則を導入する。
+元案件ではT-126から適用。T-126はその案件内の開始点であり、他案件のTask番号条件にはしない。
+他案件はOwnerが移行開始点を記録する。過去分を自動生成・遡及改変しない。
+既存の固定commitから原文を取得して補完する場合は、出典と後日回収であることを別記録に残す。
+欠落Reportを要約や「既報告どおり」で作らない。16-Uに従い、原文・diffはツール出力を全量転記する。
+
 ## 変えるもの
 
 | v0.1.0 | v0.2 |
@@ -16,7 +28,7 @@
 | Architectはチャット、Supervisor / WorkerはClaude Code | 共通仕様は役割のみを定義。Claude構成はアダプター |
 | 現在位置は復元対象ではない | Taskの現在位置は表示でもよいが、別のRecovery Stateを必ず用意 |
 | 毎回新規Architectを禁止 | Stateと実行実体を照合できれば交代・新規起動を許可 |
-| 窓口のplaceholder復帰だけを規定 | 復帰・差替え前に発行Taskを原文でarchive |
+| 窓口のplaceholder復帰だけを規定 | Task・返送済みReportを原文archive。Gateでは両archiveと両resetを同じcommitにする |
 | ReportだけWorkerがrevisionを増やせる例外 | 廃止。revisionは発行Taskに常に一致し、変更はArchitectが再発行 |
 | main無変更をmerge-baseだけで推測 | 変更範囲・分岐元・mainの実体を照合。merge-baseだけで実行履歴を断定しない |
 
@@ -54,7 +66,7 @@ Reportの5必須キー（task_id / revision / status / branch / commit）、
    現在のPolicy、Task一覧、採用判断、Report参照、承認待ち、次番号を実体と照合して記入する。
 5. 手動 / 半自動 / エージェント接続のプロファイルを明示し、Ownerが承認する。
    不明なGateはconfirmとし、`task_start: confirm` では `--no-autostart` を使う。
-6. 小さなTaskで起草→Supervisorのファイル化・保存→起動→Report→独立確認→archive→reset→再開を検証する。
+6. 小さなTaskで起草→Supervisorのファイル化・保存→起動→Report→独立確認→Task/Reportの対archive→両reset→再開を検証する。
    Workerの固定接続は[worker-connection.md](worker-connection.md)へ整理し、実際の起動定義と照合する。
 7. 別セッションからStateだけを入口に再取得する引継ぎテストを行う。
 
@@ -71,7 +83,7 @@ Reportの5必須キー（task_id / revision / status / branch / commit）、
 | 原文 | 同一ID・revisionの別内容が拒否され、archive原文が変わらない |
 | Gate | 自動通知や自動接続だけではconfirmを通過しない |
 | 証拠 | 省略diffを確認済みとせず、全変更を独立取得する |
-| 保全 | Reportの固定参照が窓口reset・枝の再利用後にも取得できる |
+| 保全 | 両archiveと両窓口resetが同じcleanup commitに存在し、Task/Reportの原文と固定参照が再取得できる |
 | 復旧 | 再送・再起動で副作用を重複実行せず、不明状態では停止する |
 
 同梱のunit testはarchive helperと局所的なGit手順を検査する。

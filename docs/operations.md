@@ -3,7 +3,7 @@
 本書は[Core](protocol.md)のGitアダプター向け手順。
 コマンド中の `<...>` は実値に置き換える。実行前に権限と対象を確認する。
 
-## 1. Task原文を残す
+## 1. Task・Reportの原文を残す
 
 `.ai/task.md` は現在の実行窓口。保存物は `.ai/archive/T-XXX_task_rN.md`。
 保存するのはWorkerへ渡した発行commitの `.ai/task.md` であり、プレースホルダーや草稿ではない。
@@ -12,32 +12,51 @@ Architectのチャット原文は起草元として区別する。Supervisorが�
 `status: active` を `completed` に変える等、保存時のfrontmatter追記・本文整形をしない。
 完了・取消・失効はState / Decisionへ別に記録する。
 
+**裁定17-J（2026-09-26）：Reportもarchive対象とする。** Gate時に `.ai/report.md` を
+`.ai/archive/T-XXX_report_rN.md` へ原文のまま複写する。Nは返送Reportのrevisionであり、
+対象TaskとID・revisionが一致することを確認する。別Taskの古い窓口を保存しない。
+Reportの固定版は `<Reportを含むcommitの完全SHA>:.ai/report.md`。
+frontmatterの `commit`（実装先端または分岐元）とは別なので取り違えない。
+Task発行commit・Report commit・両archiveの参照を引継ぎ文書に残す。
+
 通常はSupervisorがGate時、窓口をプレースホルダーへ戻す前に複写する。
 ただし、**Gateに達する前の差戻し・revision更新・取消でも、旧版を消す前に保存する**。
 全発行revisionを保存し、同じファイル名の異なる内容を上書きしない。
 発行からGateまでの間も、固定commit等で原文を取得可能に保つ。
-配布 `.gitattributes` のarchive規則を導入し、保存TaskへのGit改行変換・clean filterを無効にする。
+配布 `.gitattributes` のarchive規則を導入し、保存Task・ReportへのGit改行変換・clean filterを無効にする。
 独自のattributes設定がある場合は優先順位を確認し、commit後のblobも原文ハッシュと照合する。
 
+Gateでは両窓口を対で保存する。以下は固定commitの原文と窓口の一致を確認した後に使う。
+
 ```bash
-python scripts/task_archive.py
-python scripts/task_archive.py --expected-sha256 <発行側で確定した64桁のSHA256>
+python scripts/task_archive.py --report .ai/report.md
+python scripts/task_archive.py --report .ai/report.md --expected-sha256 <Task発行正本のSHA256> --expected-report-sha256 <Report固定版のSHA256>
 ```
 
-既定入力は作業ツリーの窓口なので、先に発行commitのblobと一致することを確認する。
-作業ツリーの改行変換や後続編集で異なる場合は停止し、発行commitから取得した正本を使う。
+従来の `python scripts/task_archive.py` はTask単独の先行保全用として維持するが、
+**Reportを保存しないため、これだけでGateの窓口リセットへ進んではならない。**
+
+既定入力は作業ツリーの窓口なので、Task発行commitとReport固定commitの各blobとの一致を確認する。
+改行変換や後続編集で異なる場合は停止し、各固定commitから取得した原文ファイルを
+`--task <ファイル>` / `--report <ファイル>` で渡す。Gitの標準出力はバイト列のまま保存し、
+チャットからの再生成やテキストモードによる改行変換をしない。
 最初のコマンドは現在の窓口と保存物の同一性を保証するだけで、発行者の原意は保証しない。
 2つ目は独立に渡された原文のハッシュとも比較する。ハッシュを転送後の同じファイルから
 作り直しても、上流で発生した改変は検出できない。
 期待ハッシュの対象が「起草元」か「発行正本」かを明記する。承認済み整形で両者が異なるとき、
 同じハッシュで双方を検証したとは扱わない。archive照合の対象は発行正本のバイト列である。
 
-ヘルパーはPython 3.9以上の標準ライブラリのみを使う。Taskを読み、原文を保ったまま
-保存する。同一内容での再実行は成功扱い、異なる内容との衝突・不正なID・不正なrevision・
-プレースホルダー・期待ハッシュ不一致はエラー。既存ファイルへの上書きは行わない。
+ヘルパーはPython 3.9以上の標準ライブラリのみを使う。`--report` 指定時は、両文書の
+ID・revision・状態、Reportのbranch/commit書式、期待ハッシュ、既存保存物との衝突を先に確認する。
+Reportはcompleted / blocked / failedを原状で保存し、noneは拒否する。保存は受入合格を意味しない。
+同内容の再実行は成功扱い。欠落・不一致・不正入力はエラーとし、既存原文を上書きしない。
+本文の要約有無や発行権限を判定する機能ではない。正本の独立取得・照合はSupervisorが行う。
 同一ディレクトリ内の一時ファイルとhard linkによる排他的公開を使うため、
 hard link非対応のストレージではエラーで停止する。単一の権限ある書き手を前提とし、
 敵対的な共有ファイルシステムへの防御や分散トランザクションは提供しない。
+2ファイルの保存自体は一括トランザクションではない。途中のI/O失敗で片方だけ保存される場合がある。
+その場合も両窓口は変更しない。片方だけの状態をcleanupとしてcommitせず、原文・保存物を照合して
+再実行する。両方の保存・検証が成功するまで、リセット・Gate完了・次Taskへ進まない。
 
 ヘルパー自身はリセット、Git操作、Gate承認、Agent起動をしない。
 既定のClaude headless WorkerにPython実行許可があるとは限らない。Supervisor側の
@@ -47,24 +66,27 @@ hard link非対応のストレージではエラーで停止する。単一の�
 
 ブリッジと共有作業ツリーを同時に操作しない。ブリッジを停止し、Workerの終了、
 作業ツリーの状態、承認対象の固定SHAを確認する。実装の統合とcleanupは別commitでよい。
-ただし**Taskのarchive作成とtask/report窓口のリセットは同じcleanup commitにする**。
+**Task archive・Report archive・task窓口reset・report窓口resetを同じcleanup commitにする（17-J）。**
+archive済みの同内容ファイルがある場合も、cleanupのtreeに両原文が存在することを確認する。
 以下の `--no-ff` は同梱Gitアダプターの既定例であり、Core共通の要件ではない。
 案件で承認済みのff統合を使っている場合、今回の照合を理由に無断で方式を変えない。
 いずれも承認対象・Reportの到達可能性・cleanup先端を照合する。
 
 1. Reportと全変更を検証し、必要なcommit / push Gateの承認を得る。
 2. 承認済みのReport先端SHAをローカルmainへ `--no-ff` で統合する。
-3. Task原文をarchiveし、Reportを再取得できる固定参照と判断をStateへ記録する。
-4. `.ai/task.md` と `.ai/report.md` を配布時の `status: none` の窓口に戻す。
-5. archive・リセット・State更新を一つのcleanup commitへ含め、push Gateに従って反映する。
+3. TaskとReportのID・revision・各固定原文との一致を確認し、両方をarchiveして保存結果を検証する。
+4. 両archiveと出典commitの固定参照・判断をStateへ記録した後、両窓口を `status: none` に戻す。
+5. 両archive・両リセット・State更新を一つのcleanup commitへ含め、push Gateに従って反映する。
+
+以下の `.ai/state.md` は例。既存の引継ぎ文書を使う場合は、そのパスに置き換える。
 
 ```bash
 git merge --no-ff <承認済みReport先端の完全SHA>
-python scripts/task_archive.py
-# ここで文書編集機能によりStateを更新し、task/reportをプレースホルダーへ戻す。
-git add .ai/archive/T-001_task_r1.md .ai/task.md .ai/report.md .ai/state.md
+python scripts/task_archive.py --report .ai/report.md
+# 成功と両原文の保存を確認後、Stateを更新し、両窓口をプレースホルダーへ戻す。
+git add .ai/archive/T-001_task_r1.md .ai/archive/T-001_report_r1.md .ai/task.md .ai/report.md .ai/state.md
 git diff --cached --stat
-git diff --cached -- .ai/task.md .ai/report.md .ai/state.md
+git diff --cached -- .ai/archive/T-001_task_r1.md .ai/archive/T-001_report_r1.md .ai/task.md .ai/report.md .ai/state.md
 git commit -m "tai: archive T-001 r1 and reset handoff windows"
 # push Gate通過後だけ実行する。
 git push origin main
@@ -76,16 +98,19 @@ git rev-parse origin/main
 最後の2つの完全SHAが期待するcleanup commitと一致してから次Taskを搬入する。
 既存手順の「merge commitだけの照合」では、cleanup未反映を見落とす。
 途中失敗では次Taskを開始せず、archiveと窓口の実体を照合して復旧する。
-差戻し時の旧revision保存は、新版への差替えと同じcommitに含める。
+差戻し時も旧Taskと返送済み旧Reportを、新版へ差し替える前にarchiveする。
+Report未着の場合は欠落を記録してTaskを先行保全できるが、仮のReportを作らずGate完了とはしない。
+不一致Reportを現在TaskのID・revisionへ書き換えない。隔離・照合してArchitectへ戻す。
 
-## 3. Reportは保存先を選べるが、失ってよいわけではない
+## 3. ReportもGateで必ずarchiveする（17-J）
 
-Report commitが保持対象のmain履歴へ統合されていれば、その履歴を保存先として使える。
-Architectのチャットだけに依存する必要も、Reportを別archiveへ二重保存する義務もない。
-リポジトリ外の保存先を使う場合も、後任から取得可能な固定版を保持する。
-状態文書には固定参照・保持条件を残す。窓口のプレースホルダー復帰と履歴の消失は別である。
-Gitへ統合済みなら `<Report先端の完全SHA>:.ai/report.md` を参照として記録できる。
-参照先commitを到達可能に保ち、アクセス権も維持する。
+以前の「Git履歴や既存返送先があれば別archiveは任意」という扱いは、17-Jで更新する。
+Git履歴・チャットは追加の参照経路として残せるが、GateのReport archive義務を代替しない。
+保存先は `.ai/archive/T-XXX_report_rN.md`。内容は検証対象Reportの全バイトで、
+frontmatter・本文・数値・空白・改行・末尾改行を変更しない。要約や「既報告どおり」に置換しない。
+元の `<Report先端の完全SHA>:.ai/report.md` も出典として記録し、到達可能性・アクセス権を保持する。
+archive後は `<cleanupの完全SHA>:.ai/archive/T-XXX_report_rN.md` から固定版を取得できる。
+Reportの返送経路、実装とReportの別commit、採否判断の責務は変更しない。
 
 未統合ブランチは次revisionで書き換わる可能性がある。Reportを回収・保全する前に
 ブランチを上書き・削除しない。必要なら別の文書ストアや追加archiveへ保全する。
@@ -93,7 +118,8 @@ Gitへ統合済みなら `<Report先端の完全SHA>:.ai/report.md` を参照と
 
 ## 4. diffの正本はSupervisorの独立取得
 
-Workerの全文diff貼付は任意。省略する場合は省略したことと範囲をReportに明記する。
+16-Sにより、WorkerがReportへ全文diffを重複添付することは任意。省略時はその事実と範囲を記載する。
+これは、SupervisorがReport・独立取得したdiff・本文をArchitectへ転記する際の省略許可ではない。
 SupervisorはReport、実装commit、分岐元、変更範囲をGitから独立に取得してArchitectへ渡す。
 Workerの貼付だけを完全な差分の証拠としない。
 
@@ -119,8 +145,12 @@ Reportのみのcommitも別途確認し、Task改変や無関係なファイル�
 大きいdiffは省略表示で済ませず、固定版のファイルとして保存して参照・サイズ・SHA256を渡す。
 分割して渡すなら対象範囲と総数を明示する。取得不能・検証不能はそのまま報告する。
 
-**証拠のツール出力はそのまま貼付または固定ファイルで渡し、手書き転記・再生成しない。**
-要約や解釈は原出力と別欄にする。SHA・行数・検算値・定義行も同様に扱う。
+**16-U：report・diff・本文の転記はツール出力のまま行う。** 手書き転記・再生成、
+要約表記への置換、「既報告どおり」「前便参照」等による原文の省略は禁止する。
+ツールやチャットの表示が途中で切れた場合、その部分出力を全文として扱わない。
+固定ファイルまたは範囲・順序・総数を明示した分割で全量を渡す。
+判断の要約・解釈を別欄に添える場合も、原出力を必ず併せて渡し、要約で代替しない。
+SHA・行数・検算値・定義行も原出力を使う。
 機密を除く必要がある場合は伏字等の処理と対象範囲を明記し、無加工の原証拠は許可された場所に保持する。
 Workerによるコマンド置換等の逸脱もReportで申告する。自己申告は逸脱の事前許可を意味しない。
 
@@ -192,6 +222,8 @@ SupervisorやBridgeが自動で権限・モデルを切り替えない。応答�
 | 提案 | 0.2での扱い |
 |---|---|
 | Taskのmain上archive | 採用。原文不変、全発行revision、差戻し・取消も保全 |
+| Reportのmain上archive（17-J） | 必須。Task archive・両窓口resetと同じcleanup commit |
+| 原文転記（16-U） | ツール出力のまま全量を転記。要約・「既報告どおり」等で置換しない |
 | 全文diffの独立取得 | 採用。複数commitではTask全範囲を追加確認 |
 | 作者情報を出さないcommit表示 | 採用。個人情報除去の保証とは区別 |
 | fetch + merge --ff-only | 採用。FETCH_HEAD依存の回避と一般的排他を区別 |

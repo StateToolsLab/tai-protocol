@@ -13,13 +13,14 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from task_archive import ArchiveError, archive_task, task_identity  # noqa: E402
+from task_archive import ArchiveError, archive_pair, archive_task, task_identity  # noqa: E402
 
 TASK = (
     "---\ntask_id: T-001\nrevision: 1\nstatus: active\n"
     "commit: auto\npush: confirm\nmodel: sonnet\n---\n\n"
     "# Task\n定義（全角）を変更しない。\n閾値: 0.95\n"
 ).encode("utf-8")
+REPORT = b"---\ntask_id: T-001\nrevision: 1\nstatus: completed\nbranch: claude/T-001\ncommit: 123abcd\n---\n# Completed report\n"
 PLACEHOLDER = b"---\ntask_id: none\nrevision: 0\nstatus: none\n---\n"
 
 
@@ -216,9 +217,13 @@ class GitCleanupTests(unittest.TestCase):
             source = root / "task.md"
             raw = TASK.replace(b"\n", b"\r\n")
             source.write_bytes(raw)
-            archive_task(source, root / ".ai/archive")
+            report = root / "report.md"
+            report_raw = REPORT.replace(b"\n", b"\r\n")
+            report.write_bytes(report_raw)
+            archive_pair(source, report, root / ".ai/archive")
             git("add", ".gitattributes", ".ai/archive")
             self.assertEqual(git("show", ":.ai/archive/T-001_task_r1.md"), raw)
+            self.assertEqual(git("show", ":.ai/archive/T-001_report_r1.md"), report_raw)
 
     def test_archive_and_reset_are_in_same_commit(self):
         with tempfile.TemporaryDirectory() as name:
@@ -237,18 +242,20 @@ class GitCleanupTests(unittest.TestCase):
             source = ai / "task.md"
             source.write_bytes(TASK)
             report = ai / "report.md"
-            report.write_bytes(b"# Completed report retained in a reachable commit\n")
+            report.write_bytes(REPORT)
             git("add", ".ai")
             git("commit", "-qm", "issued task and returned report")
             report_ref = git("rev-parse", "HEAD").decode().strip()
-            archived = archive_task(source, ai / "archive")
+            archived, archived_report = archive_pair(source, report, ai / "archive")
             source.write_bytes(PLACEHOLDER)
             report.write_bytes(PLACEHOLDER)
             git("add", ".ai")
-            git("commit", "-qm", "archive task and reset both windows")
+            git("commit", "-qm", "archive Task and Report and reset both windows")
             changed = set(git("diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD").decode().splitlines())
-            self.assertEqual(changed, {".ai/archive/T-001_task_r1.md", ".ai/task.md", ".ai/report.md"})
+            self.assertEqual(changed, {".ai/archive/T-001_task_r1.md", ".ai/archive/T-001_report_r1.md",
+                                       ".ai/task.md", ".ai/report.md"})
             self.assertEqual(git("show", "HEAD:.ai/archive/" + archived.path.name), TASK)
+            self.assertEqual(git("show", "HEAD:.ai/archive/" + archived_report.path.name), REPORT)
             self.assertEqual(git("show", "HEAD:.ai/task.md"), PLACEHOLDER)
             self.assertEqual(git("show", "HEAD:.ai/report.md"), PLACEHOLDER)
             self.assertIn(b"Completed report", git("show", report_ref + ":.ai/report.md"))
