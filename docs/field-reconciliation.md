@@ -86,3 +86,28 @@ Task発行正本とReport固定版の原文を保持し、要約・参照文で�
 - 起動手順は `.claude/skills/tai/SUPERVISOR_STARTUP.md` に置く。
 
 これは運用上の安全設計の反映であり、実Claude環境での新候補E2E合格を意味しない。
+
+
+## 2026-09-28追補 — 長時間Taskの途中終了と外部状態からの復帰
+
+tai-protocol未導入の研究プロジェクトから、長時間Taskの継続管理に関する実例報告を受領した。
+管理側の会話が未完了Taskを残したまま終了・idle化した一方、別セッションのWorkerは処理を継続していた。
+固定依頼、途中成果物、受入記録、進捗台帳、再開手順が外部ファイルに保存されていたため、
+USERと上位の進行タスクが状態を照合し、Workerを二重起動せず復旧できた。
+
+**原因としてコンテキスト圧縮は確認されていない。**
+本件を「圧縮による役割喪失が証明された事例」として扱わず、
+controller/session終了とTask/Worker状態の分離、および外部状態からの復旧事例として記録する。
+
+本件からの提案はまだ採用済み裁定ではない。再現可能なE2E候補として
+[e2e-long-running-recovery.md](e2e-long-running-recovery.md) に分離した。
+
+特に次を検証対象とする。
+
+- turn completed / idle / Task completed / Worker stopped / Gate accepted を同一視しない。
+- 復旧時はWorker再起動より先にin-flight execution、成果物、受入済み範囲を照合する。
+- Recovery Stateの存在だけでなく、それを必ず読むStartup / Rebinding経路を持つ。
+- 前任会話なしでも現在地を復元し、権限不明・実行状態不明なら理由付きで停止する。
+- 自然発生した圧縮と、再現可能な「前任会話なしの交代」試験を区別する。
+
+これはtai-protocolの導入成功例ではなく、外部状態の価値と継続制御の不足を示す反例である。
