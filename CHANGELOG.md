@@ -1,7 +1,12 @@
 # Changelog
 
-## Unreleased follow-up to 0.2.0-rc.1 — 2026-09-26
+## Unreleased follow-up to 0.2.0-rc.1 — 2026-09-26 to 2026-09-28
 
+- Adopt Seed 17-s12: role memory and chat self-identification are not authority.
+  Add a repository Supervisor startup/rebinding instruction and require external
+  Role Binding plus durable Git state to be re-read before handoff-side effects.
+  Distinguish notification routing (`SUPERVISOR_SESSION`) from role authority;
+  mismatches fail closed instead of being repaired from session memory.
 - Adopt field decision 17-J: archive both Task and Report originals at Gate,
   with both window resets in the same cleanup commit. Git history or chat retention
   is no longer a substitute for the explicit Git-adapter Report archive.
