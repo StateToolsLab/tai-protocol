@@ -1,15 +1,15 @@
-# tai handoff config
-#
-# ここは default 値であり Source of Truth ではない。
-# Autonomy Policy の Source of Truth は Architect Thread の指示で、
-# Architect は Thread Tree の枝ごとにこれを上書きしてよい（spec §14）。
+# tai Claude Code / Git adapter defaults
+# Ownerが承認したPolicyの既定値。実効Policy・承認・版はTask本文とRecovery Stateに記録する。
+# この設定だけでGateや予算を自動強制するものではない。
 
-# 現場監督（Code クラウドセッション）の ID。通知の宛先。
-# 雛形では空欄。現場監督は世代交代するため、ここに実セッション ID を
-# コミットしない（現存しないセッションを指し続ける負債になる）。
-# 運用では環境変数 SUPERVISOR_SESSION で渡す。環境変数はこの値より優先される。
+# SupervisorセッションID。
+# 公開同梱の通知スクリプトはSUPERVISOR_SESSION環境変数を通知先として優先する。
+# Role Binding Sourceとしてこの値を使うかは案件/AdapterのOwner承認済みprofileで明示する。
+# 通知先の解決とSupervisor権限の証明を同一視しない。矛盾時はfail closed。
+# ライブのIDや資格情報を公開配布物へ固定値としてcommitしない。
 supervisor_session:
 
-# Preset 名。定義は .claude/skills/tai/references/protocol.md §5
-#   MANUAL | TASK_BOUNDARY | GIT_BOUNDARY | AUTONOMOUS_UNTIL_ARBITRATION
+# .claude/skills/tai/references/protocol.md のPreset。
+# MANUAL | TASK_BOUNDARY | GIT_BOUNDARY | AUTONOMOUS_UNTIL_ARBITRATION
+# 接続の自動化と承認の自動化は別。アップグレードでは自動化範囲を変えない。
 default_autonomy: TASK_BOUNDARY
