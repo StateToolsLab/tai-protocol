@@ -187,12 +187,6 @@ Git commitやWorkerの完了と同義ではない。採用の根拠と成果物�
 配送の重複排除だけで外部副作用のexactly-once実行が保証されるわけではない。
 副作用の冪等性キーや照合を別途用意し、不明な実行は自動リトライしない。
 
-**会話ターンの終了、controllerのidle、Task完了、Worker停止、Gate採用は別状態である。**
-会話やcontrollerの状態だけをTask完了・Worker停止・受入完了の証拠にしてはならない（MUST NOT）。
-復旧時は、発行済みTask、実行所有者、in-flight execution、外部副作用、成果物、Report、
-受入済み範囲を外部状態から照合し、requested / running / completed / accepted等を区別する。
-Workerの状態が不明な場合は再起動より先に照合し、不明のまま重複実行しない。
-
 並行Taskを許可する実装では、別の実行領域と状態更新の版照合または排他を設ける（MUST）。
 v0.1互換の単一task窓口・共有作業ツリーのブリッジは直列運用に限定する。
 古いStateからの上書きや、未回収Reportがある枝の無断再利用を禁止する。
