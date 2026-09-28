@@ -39,6 +39,19 @@ Supervisorの責務は次に限定する。
 世代交代時は本書・references・Recovery Stateを読み、旧実行を照合する。
 通知先は環境変数 `SUPERVISOR_SESSION` を優先し、実セッションIDを配布物へcommitしない。
 
+### 毎便のRole Rebinding（Seed 17-s12）
+
+コンテキスト圧縮や再接続で役割の記憶が失われても、チャット上の自己申告を根拠にしない。
+Supervisorは新しいTask / Report / Gateを扱う各便の冒頭で
+[`SUPERVISOR_STARTUP.md`](SUPERVISOR_STARTUP.md)を実行し、Role Binding SourceとGitの現在形を
+read-onlyで再取得する。自分のruntime identityと割当先が一致し、Task・Report・Gate・mainの状態を
+固定refから確認できるまで、push / merge / Task搬入 / Worker再起動等の副作用を行わない。
+
+Role Binding SourceはAdapter / 案件が明示する。repo-bound運用では `.ai/config.yaml` の
+`supervisor_session` と自分のセッションIDを一致確認する。公開同梱の通知実装が
+`SUPERVISOR_SESSION` を宛先として優先することは、役割権限の証明とは別である。
+両者が矛盾する場合、承認済みのbinding規則を確認できるまでfail closedとする。
+
 ## 1. 手番と順序
 
 ```text
