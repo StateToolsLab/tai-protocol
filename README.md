@@ -59,6 +59,7 @@ also cost time and tokens.
 | [Examples](docs/examples.md) | Manual, mixed-engine, and agent-connected handoffs |
 | [Worker connection](docs/worker-connection.md) | Current fixed connection and proposed profile extension |
 | [Field reconciliation](docs/field-reconciliation.md) | Operational feedback, corrections, and unverified items |
+| [Long-running recovery E2E](docs/e2e-long-running-recovery.md) | Controller termination while Worker continues; recovery without duplicate execution |
 | [Migration](docs/migration-v0.2.md) | Explicit changes from v0.1.0 and compatibility limits |
 | [Changelog](CHANGELOG.md) | Release-candidate scope and known limitations |
 
