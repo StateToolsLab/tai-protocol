@@ -97,8 +97,12 @@ scripts/task_archive.py       optional Python 3.9+ archive helper
 .ai/                          placeholder windows and blank configuration
 ```
 
-Start the Supervisor with: “Read `.claude/skills/tai/SKILL.md` and take the Supervisor
-role.” Configure `SUPERVISOR_SESSION` locally; do not commit live session credentials.
+Start the Supervisor with: “Read `.claude/skills/tai/SUPERVISOR_STARTUP.md`, then
+`.claude/skills/tai/SKILL.md`, and re-establish the Supervisor role from external state.”
+Do not treat the chat's role claim as authority. Each handoff begins by re-reading the
+approved Role Binding Source and Git state. Configure notification routing separately;
+`SUPERVISOR_SESSION` may select a notification destination and is not, by itself, proof
+of Supervisor authority.
 Follow [transport.md](.claude/skills/tai/references/transport.md) before running the
 bridge. Use `--no-autostart` whenever Task Start requires confirmation or prerequisites
 have not been checked. Automation is not enabled by upgrading the documentation.
@@ -163,6 +167,8 @@ Architect（司令塔）、Supervisor（現場監督）、Worker（実行者）�
 永続するのは、発行Task、採用した判断、現在状態、成果物、検証根拠。
 会話全文や同じAIの記憶を必須にしないため、司令塔・現場監督・Workerを交代できる。
 その際も、未完了処理と外部への副作用を照合してから再開する。
+コンテキスト圧縮・再接続・担当交代後は、チャットの自己申告ではなくRole Binding SourceとGitの
+現在形から役割を再確立する。現場監督は各便冒頭でread-only照合し、不一致なら副作用操作を停止する。
 
 v0.1.0の「手動2回」は引き続き選べる運用として残す。v0.2では、それを全利用者への
 義務とせず、手動・半自動・全自動を同じ文書規約と承認ポリシーの下に置く。
