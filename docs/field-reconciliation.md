@@ -63,3 +63,26 @@ T-126は元案件の適用開始点であり、他案件へ同じ番号を要求
 Task発行正本とReport固定版の原文を保持し、要約・参照文で実データを置換しない。
 16-SのWorkerによる重複diff添付省略と、16-UのSupervisorによる原文転記・全量返送は別の規律である。
 この裁定の受領・規約反映は、新候補のE2EやUAT合格を意味しない。
+
+
+## 2026-09-27追補 — Seed 17-s12（Role Rebinding）
+
+実運用から、コンテキスト圧縮後にSupervisorの役割記憶が失われた一方、
+「チャットの自己申告は根拠にせず、Git上の状態を信じる」という規律は保持され、
+結果として未確認のpushを拒否した事例が報告された。
+
+この事例は、役割記憶の保持ではなく**外部状態への再バインド**を安全側の設計原則とする根拠として扱う。
+案件ローカル提案は、Supervisorの起動指示文をrepoに置き、各便の冒頭でconfigとGitを読み直し、
+`.ai/config.yaml` の `supervisor_session` と自分のセッションIDの一致で役割を判定するもの。
+
+候補版では次のように一般化して反映する。
+
+- 会話上の「自分はSupervisor」「push済み」等を権限・完了証拠にしない。
+- AdapterごとにRole Binding Sourceとruntime identityの取得方法を明示する。
+- Git Adapterのrepo-bound profileでは `.ai/config.yaml` の `supervisor_session` を照合できる。
+- 公開同梱の `SUPERVISOR_SESSION` は通知ルーティングにも使うため、役割正本と同一視しない。
+- 毎便冒頭・圧縮後・再接続後・交代後にread-onlyでRole BindingとGitの現在形を再取得する。
+- 不一致・取得不能・正本競合ではpush / merge / Task搬入 / Worker再起動を行わずfail closedとする。
+- 起動手順は `.claude/skills/tai/SUPERVISOR_STARTUP.md` に置く。
+
+これは運用上の安全設計の反映であり、実Claude環境での新候補E2E合格を意味しない。
