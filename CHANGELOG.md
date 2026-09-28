@@ -2,6 +2,10 @@
 
 ## Unreleased follow-up to 0.2.0-rc.1 — 2026-09-26 to 2026-09-28
 
+- Add a non-TAI field report and reproducible E2E scenario for a long-running Task where
+  the controller conversation ended while an external Worker kept running. Do not attribute
+  the incident to context compression without evidence. Explicitly separate turn completion,
+  controller idle, Task completion, Worker stop, and Gate acceptance; reconcile before retry.
 - Adopt Seed 17-s12: role memory and chat self-identification are not authority.
   Add a repository Supervisor startup/rebinding instruction and require external
   Role Binding plus durable Git state to be re-read before handoff-side effects.
