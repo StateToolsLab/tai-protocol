@@ -2,8 +2,11 @@
 # Ownerが承認したPolicyの既定値。実効Policy・承認・版はTask本文とRecovery Stateに記録する。
 # この設定だけでGateや予算を自動強制するものではない。
 
-# 通知先のSupervisorセッション。運用ではSUPERVISOR_SESSION環境変数を優先する。
-# ライブのIDや資格情報を配布物へcommitしない。
+# SupervisorセッションID。
+# 公開同梱の通知スクリプトはSUPERVISOR_SESSION環境変数を通知先として優先する。
+# Role Binding Sourceとしてこの値を使うかは案件/AdapterのOwner承認済みprofileで明示する。
+# 通知先の解決とSupervisor権限の証明を同一視しない。矛盾時はfail closed。
+# ライブのIDや資格情報を公開配布物へ固定値としてcommitしない。
 supervisor_session:
 
 # .claude/skills/tai/references/protocol.md のPreset。
