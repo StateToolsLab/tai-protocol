@@ -32,6 +32,23 @@ Markdownは既定の表現だが唯一の許容形式ではない。構造化形
 独立レビューが指定されている場合、自己レビューをその代わりにしてはならない。
 Supervisorの機械チェックにはLLMを使ってもよいが、検証可能な証拠を残す。
 
+### Role Binding と外部状態からの再構成
+
+**役割の自己申告や会話上の記憶は、役割権限・完了状態・現在形の証拠にならない（MUST NOT）。**
+コンテキスト圧縮、セッション再開、担当交代、長時間の中断後は、各Adapterが定める
+Role Binding Source とdurable stateから自分の役割と現在形を再取得する（MUST）。
+高い副作用権限を持つSupervisorは、実務上の各handoff便の冒頭でも同じ再照合を行う（SHOULD）。
+
+Adapterは最低限、(a) runtime identityの取得方法、(b) Role Binding Source、
+(c) 現在のTask / Report / Gate / repository状態の取得先、(d) 不一致時の停止方法を定義する。
+Role Binding Sourceとruntime identityが一致しない、取得不能、複数の正本が矛盾する場合は
+fail closedとし、自己任命・自己修復で副作用権限を獲得してはならない（MUST NOT）。
+
+Git Adapterでは、案件が `.ai/config.yaml` の `supervisor_session` をRole Binding Sourceに採用する場合、
+Supervisorは自分のセッションIDとの一致を確認してから副作用操作を行う。
+一方、公開同梱の `SUPERVISOR_SESSION` 環境変数は通知先の優先解決にも使われるため、
+**通知ルーティングとRole Bindingは別概念**として明示する。優先規則が不明・矛盾する場合は停止する。
+
 ## 3. Task Artifact
 
 Taskは最低限、次を明示するか、版を固定した文書を参照する（MUST）。
