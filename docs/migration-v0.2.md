@@ -69,6 +69,10 @@ Reportの5必須キー（task_id / revision / status / branch / commit）、
 6. 小さなTaskで起草→Supervisorのファイル化・保存→起動→Report→独立確認→Task/Reportの対archive→両reset→再開を検証する。
    Workerの固定接続は[worker-connection.md](worker-connection.md)へ整理し、実際の起動定義と照合する。
 7. 別セッションからStateだけを入口に再取得する引継ぎテストを行う。
+8. 長時間Taskでは、Workerを稼働させたままcontroller側を中断・交代させ、
+   StartupからTask・Stable Point・in-flight execution・受入済み範囲を復元する。
+   turn終了やidleを完了とみなさず、重複起動せず残工程を継続できることを確認する。
+   詳細は [long-running recovery E2E](e2e-long-running-recovery.md) を参照。
 
 過去Taskを回収できる場合はGitの固定commitから回収する。
 原文が見つからないTaskを、会話から推測して「発行原文」として作らない。
