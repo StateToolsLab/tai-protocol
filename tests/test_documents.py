@@ -34,6 +34,23 @@ class DocumentTests(unittest.TestCase):
         fields = dict(line.split(":", 1) for line in header.strip().splitlines())
         self.assertEqual(set(fields), {"task_id", "revision", "status", "branch", "commit"})
 
+    def test_supervisor_startup_rebinding_contract_is_present(self):
+        startup = ROOT / ".claude/skills/tai/SUPERVISOR_STARTUP.md"
+        self.assertTrue(startup.exists())
+        text = startup.read_text(encoding="utf-8")
+        self.assertIn("Role Binding Source", text)
+        self.assertIn("supervisor_session", text)
+        self.assertIn("fail closed", text)
+        self.assertIn("Git", text)
+
+        skill = (ROOT / ".claude/skills/tai/SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("SUPERVISOR_STARTUP.md", skill)
+        self.assertIn("Role Rebinding", skill)
+
+        core = (ROOT / "docs/protocol.md").read_text(encoding="utf-8")
+        self.assertIn("役割の自己申告や会話上の記憶", core)
+        self.assertIn("通知ルーティングとRole Bindingは別概念", core)
+
     def test_version_is_presented_as_candidate(self):
         version = (ROOT / "VERSION").read_text().strip()
         self.assertEqual(version, "0.2.0-rc.1")
