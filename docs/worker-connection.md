@@ -62,5 +62,20 @@ worker:
 Supervisor交代時には通知先の環境変数とconfigの実効値を確認する。configだけ直しても
 環境変数が旧宛先を指していれば切り替わらない。同梱例はライブIDの公開commitを推奨しない。
 
+## 5. SupervisorのRole Binding
+
+Worker接続とは別に、Supervisor自身も外部状態へ再バインドする。
+チャットの自己申告や圧縮前の記憶をSupervisor権限の根拠にしない。
+
+Git Adapterのrepo-bound profileでは、Ownerが `.ai/config.yaml` の `supervisor_session` を
+Role Binding Sourceとして指定できる。Supervisorは各handoffの冒頭で自分のruntime identityを取得し、
+fetch後の承認済みrefから読んだ値と一致確認する。不一致・空欄・取得不能では副作用操作を行わない。
+
+公開同梱の通知スクリプトは `SUPERVISOR_SESSION` 環境変数を通知先として優先する。
+これは配送先解決であり、role bindingと同義ではない。環境変数とconfigが異なる場合、
+Ownerが承認したprofileと交代記録で正本・優先順位を確認できるまで停止する。
+
+実行手順は [Supervisor Startup](../.claude/skills/tai/SUPERVISOR_STARTUP.md) を参照。
+
 起動成功やexit=0は、Reportの到着・版一致・受入合格・Gate完了を意味しない。
 ブリッジ再起動でも未完了Taskと実際の実行状態を先に照合し、完了不明の作業を自動再実行しない。
