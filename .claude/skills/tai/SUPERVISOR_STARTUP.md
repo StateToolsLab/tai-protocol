@@ -71,6 +71,9 @@ git show origin/main:.ai/report.md
 - 現在のTask ID / revision / status、Report到着状況、承認待ちGateが分かる。
 - 前任またはWorkerの実行中操作を完了扱いにしていない。
 - 未commit変更、未push変更、origin/mainとの差分を「完了」という自己申告だけで無視していない。
+- controller / chatのturn終了やidleをTask完了・Worker停止・Gate採用と取り違えていない。
+- requested / running / completed / accepted / not-started を、外部記録と実体から区別できる。
+- Workerが実行中または状態不明なら、再起動前に実行ID・成果物・Report・外部副作用を照合する。
 
 ## 4. fail closed
 
